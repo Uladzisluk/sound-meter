@@ -6,9 +6,14 @@
 
 #define BUFFER_SIZE 4096
 #define SAMPLE_RATE 44100
+#define MAX_CALIBRATION_ATTEMPTS 50
 
 double max_rms = 0;
 double max_db = 0;
+double sum_db = 0;
+double equalizer = 0;
+int calibration_attempt = 0;
+boolean calibration = 1;
 
 UINT chooseMicrophone(int numDevices) {
     printf("Choose microphone to use: ");
@@ -48,6 +53,10 @@ void checkError(MMRESULT result, const char* message) {
     }
 }
 
+void setMicrophoneVolume() {
+
+}
+
 double calculateRMS(short* buffer, size_t size) {
     double rms = 0.0;
     for (size_t i = 0; i < size; ++i) {
@@ -58,13 +67,31 @@ double calculateRMS(short* buffer, size_t size) {
 }
 
 void CALLBACK waveInProc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR dwParam1, DWORD_PTR dwParam2) {
-    if (uMsg == WIM_DATA) {
+    // Calibration
+    if (uMsg == WIM_DATA && calibration) {
+        WAVEHDR* waveHeader = (WAVEHDR*)dwParam1;
+        short* buffer = (short*)waveHeader->lpData;
+
+        double rms = calculateRMS(buffer, waveHeader->dwBufferLength / sizeof(short));
+        double db = 20 * log10(rms);
+
+        sum_db += db;
+
+        waveInAddBuffer(hwi, waveHeader, sizeof(WAVEHDR));
+
+        if (++calibration_attempt >= MAX_CALIBRATION_ATTEMPTS) {
+            equalizer = 30 - sum_db / MAX_CALIBRATION_ATTEMPTS;
+            calibration = 0;
+        }
+    }
+    // Volume measurement
+    else if (uMsg == WIM_DATA) {
         WAVEHDR* waveHeader = (WAVEHDR*)dwParam1;
         short* buffer = (short*)waveHeader->lpData;
 
         // Volume measurement and output to the console
         double rms = calculateRMS(buffer, waveHeader->dwBufferLength / sizeof(short));
-        double db = 20 * log10(rms);
+        double db = 20 * log10(rms) + equalizer;
         if (db > max_db) {
             max_db = db;
             printf("Volume: %f dB\n", db);
@@ -123,6 +150,12 @@ int main() {
     // Start of recording
     result = waveInStart(hWaveIn);
     checkError(result, "Error starting recording");
+
+    printf("Calibration: speak in a whisper at a distance of one meter\n");
+
+    while (calibration) {
+
+    }
 
     printf("Volume Measurement. Press Ctrl+C to finish\n");
 
