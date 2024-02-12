@@ -11,7 +11,7 @@
 double max_rms = 0;
 double max_db = 0;
 double sum_db = 0;
-double equalizer = 0;
+double k = 0.0;
 int calibration_attempt = 0;
 boolean calibration = 1;
 
@@ -80,7 +80,7 @@ void CALLBACK waveInProc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR
         waveInAddBuffer(hwi, waveHeader, sizeof(WAVEHDR));
 
         if (++calibration_attempt >= MAX_CALIBRATION_ATTEMPTS) {
-            equalizer = 30 - sum_db / MAX_CALIBRATION_ATTEMPTS;
+            k = 30 / (sum_db / MAX_CALIBRATION_ATTEMPTS);
             calibration = 0;
         }
     }
@@ -91,12 +91,11 @@ void CALLBACK waveInProc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR
 
         // Volume measurement and output to the console
         double rms = calculateRMS(buffer, waveHeader->dwBufferLength / sizeof(short));
-        double db = 20 * log10(rms) + equalizer;
-        if (db > max_db) {
-            max_db = db;
-            printf("Volume: %f dB\n", db);
-        }
+        double db = 20 * log10(rms * k);
 
+        system("cls");
+        printf("Volume: %f dB\n", db);
+        Sleep(200);
         waveInAddBuffer(hwi, waveHeader, sizeof(WAVEHDR));
     }
 }
