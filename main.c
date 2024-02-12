@@ -8,9 +8,12 @@
 #define SAMPLE_RATE 44100
 #define MAX_CALIBRATION_ATTEMPTS 50
 
-double max_rms = 0;
-double max_db = 0;
 double sum_db = 0;
+
+/*
+Formula of dB is 20log((Sound Pressure)/P0)
+Assume that (Sound Pressure/P0) = k * sample value (Linear!)
+*/
 double k = 0.0;
 int calibration_attempt = 0;
 boolean calibration = 1;
@@ -57,6 +60,10 @@ void setMicrophoneVolume() {
 
 }
 
+/*
+   Function for calculating the Root Mean Square of sample buffer.
+   RMS can calculate an average amplitude of buffer.
+*/
 double calculateRMS(short* buffer, size_t size) {
     double rms = 0.0;
     for (size_t i = 0; i < size; ++i) {
@@ -67,7 +74,7 @@ double calculateRMS(short* buffer, size_t size) {
 }
 
 void CALLBACK waveInProc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR dwParam1, DWORD_PTR dwParam2) {
-    // Calibration
+    // Calibration. While calibration we are founding k
     if (uMsg == WIM_DATA && calibration) {
         WAVEHDR* waveHeader = (WAVEHDR*)dwParam1;
         short* buffer = (short*)waveHeader->lpData;
@@ -79,6 +86,10 @@ void CALLBACK waveInProc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR
 
         waveInAddBuffer(hwi, waveHeader, sizeof(WAVEHDR));
 
+        /* Assuming that volume while speaking in a whisper
+        * at a distance of one meter equals ~30dB,
+        * we are counting k
+        */
         if (++calibration_attempt >= MAX_CALIBRATION_ATTEMPTS) {
             k = 30 / (sum_db / MAX_CALIBRATION_ATTEMPTS);
             calibration = 0;
