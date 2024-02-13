@@ -8,7 +8,7 @@
 #define SAMPLE_RATE 44100
 #define MAX_CALIBRATION_ATTEMPTS 50
 
-double sum_db = 0;
+double sum_rms = 0;
 
 /*
 Formula of dB is 20log((Sound Pressure)/P0)
@@ -80,9 +80,7 @@ void CALLBACK waveInProc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR
         short* buffer = (short*)waveHeader->lpData;
 
         double rms = calculateRMS(buffer, waveHeader->dwBufferLength / sizeof(short));
-        double db = 20 * log10(rms);
-
-        sum_db += db;
+        sum_rms += rms;
 
         waveInAddBuffer(hwi, waveHeader, sizeof(WAVEHDR));
 
@@ -91,8 +89,8 @@ void CALLBACK waveInProc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR
         * we are counting k
         */
         if (++calibration_attempt >= MAX_CALIBRATION_ATTEMPTS) {
-            k = 30 / (sum_db / MAX_CALIBRATION_ATTEMPTS);
-            calibration = 0;
+            k = pow(10, 30 / 20) / (sum_rms / MAX_CALIBRATION_ATTEMPTS);
+            calibration = 0;       
         }
     }
     // Volume measurement
@@ -106,7 +104,7 @@ void CALLBACK waveInProc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR
 
         system("cls");
         printf("Volume: %f dB\n", db);
-        Sleep(200);
+        Sleep(1000);
         waveInAddBuffer(hwi, waveHeader, sizeof(WAVEHDR));
     }
 }
