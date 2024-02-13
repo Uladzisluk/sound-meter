@@ -6,7 +6,7 @@
 
 #define BUFFER_SIZE 4096
 #define SAMPLE_RATE 44100
-#define MAX_CALIBRATION_ATTEMPTS 50
+#define MAX_CALIBRATION_ATTEMPTS 100
 
 double sum_rms = 0;
 
@@ -101,10 +101,8 @@ void CALLBACK waveInProc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR
         // Volume measurement and output to the console
         double rms = calculateRMS(buffer, waveHeader->dwBufferLength / sizeof(short));
         double db = 20 * log10(rms * k);
-
-        system("cls");
-        printf("Volume: %f dB\n", db);
-        Sleep(1000);
+        printf("\33[2K\rVolume: %f dB", db);
+        Sleep(500);
         waveInAddBuffer(hwi, waveHeader, sizeof(WAVEHDR));
     }
 }
@@ -159,7 +157,7 @@ int main() {
     result = waveInStart(hWaveIn);
     checkError(result, "Error starting recording");
 
-    printf("Calibration: speak in a whisper at a distance of one meter\n");
+    printf("Calibration: be quit\n");
 
     while (calibration) {
 
